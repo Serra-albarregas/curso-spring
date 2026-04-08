@@ -2620,7 +2620,71 @@ volumes:
       </table></div>
 
       <h3>Métodos derivados del nombre</h3>
-      <p>Spring Data analiza el nombre del método y genera automáticamente la query JPQL correspondiente. El nombre sigue la sintaxis <code>findBy</code> + campo + condición. Los campos de relaciones se navegan con guión bajo (<code>_</code>): <code>findByAutor_Nombre</code> genera un <code>JOIN</code> a la tabla de autores y filtra por nombre. Las palabras clave disponibles incluyen <code>Is</code>, <code>Not</code>, <code>Between</code>, <code>LessThan</code>, <code>GreaterThan</code>, <code>Like</code>, <code>Containing</code>, <code>StartingWith</code>, <code>EndingWith</code>, <code>IgnoreCase</code>, <code>IsNull</code>, <code>IsNotNull</code>, <code>In</code>, <code>OrderBy</code>, <code>Top</code>/<code>First</code> y <code>Distinct</code>. Son ideales para queries simples y frecuentes; cuando la query es compleja o necesita parámetros opcionales, usa <code>@Query</code> o Specifications.</p>
+      <p>Spring Data analiza el nombre del método y genera automáticamente la query JPQL correspondiente. El nombre se construye combinando piezas en este orden: <strong>prefijo</strong> + (modificadores opcionales) + <strong>By</strong> + <strong>campo</strong> + <strong>condición</strong> + (conectores + más campos). Los campos de relaciones se navegan con guión bajo (<code>_</code>): <code>findByAutor_Nombre</code> genera un <code>JOIN</code> a la tabla de autores y filtra por nombre. Son ideales para queries simples y frecuentes; cuando la query es compleja o necesita parámetros opcionales, usa <code>@Query</code> o Specifications.</p>
+
+      <h4>Tabla de componentes del nombre</h4>
+      <p>Combina una pieza de cada columna de izquierda a derecha para formar el nombre completo del método. Solo el prefijo, el <code>By</code> y el campo son obligatorios; el resto son opcionales y componibles entre sí.</p>
+
+      <div class="table-wrap"><table>
+        <tr>
+          <th>① Prefijo<br><small style="font-weight:400;color:var(--text2)">¿Qué hace?</small></th>
+          <th>② Modificador<br><small style="font-weight:400;color:var(--text2)">(opcional)</small></th>
+          <th>③ By</th>
+          <th>④ Campo<br><small style="font-weight:400;color:var(--text2)">campo de la entidad</small></th>
+          <th>⑤ Condición<br><small style="font-weight:400;color:var(--text2)">(opcional, default = igualdad)</small></th>
+          <th>⑥ Conector<br><small style="font-weight:400;color:var(--text2)">(opcional, repite ④⑤)</small></th>
+          <th>⑦ Ordenación<br><small style="font-weight:400;color:var(--text2)">(opcional, al final)</small></th>
+        </tr>
+        <tr>
+          <td><code>find…By</code><br>devuelve entidades</td>
+          <td><code>Top<em>N</em></code> / <code>First<em>N</em></code><br>limita a N resultados</td>
+          <td rowspan="6" style="text-align:center;vertical-align:middle;font-family:var(--mono);font-size:14px;color:var(--green)"><strong>By</strong></td>
+          <td rowspan="6">Nombre del campo Java en la entidad, con la primera letra en mayúscula.<br><br>Para campos de relaciones, navega con <code>_</code>:<br><code>Autor_Nombre</code></td>
+          <td><code>Is</code> / <code>Equals</code><br>igualdad exacta (default)</td>
+          <td rowspan="6"><code>And</code><br><br><code>Or</code></td>
+          <td rowspan="6"><code>OrderBy<em>Campo</em>Asc</code><br><br><code>OrderBy<em>Campo</em>Desc</code></td>
+        </tr>
+        <tr>
+          <td><code>read…By</code><br>alias de find</td>
+          <td><code>Distinct</code><br>elimina duplicados</td>
+          <td><code>Not</code><br>negación</td>
+        </tr>
+        <tr>
+          <td><code>get…By</code><br>alias de find</td>
+          <td></td>
+          <td><code>LessThan</code> / <code>LessThanEqual</code></td>
+        </tr>
+        <tr>
+          <td><code>count…By</code><br>devuelve <code>long</code></td>
+          <td></td>
+          <td><code>GreaterThan</code> / <code>GreaterThanEqual</code></td>
+        </tr>
+        <tr>
+          <td><code>exists…By</code><br>devuelve <code>boolean</code></td>
+          <td></td>
+          <td><code>Between</code><br><code>In</code> / <code>NotIn</code><br><code>Like</code> / <code>NotLike</code><br><code>Containing</code><br><code>StartingWith</code><br><code>EndingWith</code><br><code>IgnoreCase</code><br><code>IsNull</code> / <code>IsNotNull</code><br><code>True</code> / <code>False</code></td>
+        </tr>
+        <tr>
+          <td><code>delete…By</code><br>borra y devuelve <code>void</code> o <code>long</code></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </table></div>
+
+      <h4>Ejemplos de combinación</h4>
+      <div class="table-wrap"><table>
+        <tr><th>Método resultante</th><th>SQL equivalente generado</th></tr>
+        <tr><td><code>findByPrecio</code></td><td><code>WHERE precio = ?</code></td></tr>
+        <tr><td><code>findByPrecioLessThan</code></td><td><code>WHERE precio &lt; ?</code></td></tr>
+        <tr><td><code>findByTituloContainingIgnoreCase</code></td><td><code>WHERE LOWER(titulo) LIKE LOWER('%?%')</code></td></tr>
+        <tr><td><code>findByGeneroAndPrecioLessThanEqual</code></td><td><code>WHERE genero = ? AND precio &lt;= ?</code></td></tr>
+        <tr><td><code>findByIsbnIsNull</code></td><td><code>WHERE isbn IS NULL</code></td></tr>
+        <tr><td><code>findTop3ByGeneroOrderByPrecioAsc</code></td><td><code>WHERE genero = ? ORDER BY precio ASC LIMIT 3</code></td></tr>
+        <tr><td><code>findDistinctByAutor_NombreContaining</code></td><td><code>SELECT DISTINCT … JOIN autores WHERE autores.nombre LIKE '%?%'</code></td></tr>
+        <tr><td><code>countByGenero</code></td><td><code>SELECT COUNT(*) WHERE genero = ?</code></td></tr>
+        <tr><td><code>existsByIsbn</code></td><td><code>SELECT COUNT(*) > 0 WHERE isbn = ?</code></td></tr>
+        <tr><td><code>deleteByStockAndGenero</code></td><td><code>DELETE WHERE stock = ? AND genero = ?</code></td></tr>
+      </table></div>
       <pre data-lang="java"><code><span class="kw">public interface</span> <span class="cl">LibroRepository</span> <span class="kw">extends</span> <span class="cl">JpaRepository</span>&lt;<span class="cl">Libro</span>, Long&gt;,
                                                 <span class="cl">JpaSpecificationExecutor</span>&lt;<span class="cl">Libro</span>&gt; {
 
